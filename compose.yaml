@@ -1,0 +1,66 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: canvas
+      MYSQL_USER: canvas
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中填写 MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中填写 MYSQL_ROOT_PASSWORD}
+    volumes: [mysql-data:/var/lib/mysql]
+    healthcheck:
+      test: [CMD-SHELL, 'mysqladmin ping -h localhost --silent']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, 'yes']
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+  api:
+    build: ./backend
+    environment: &backend-env
+      MYSQL_HOST: mysql
+      MYSQL_USER: canvas
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: canvas
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_DIR: /app/data/media
+      COMFYUI_URL: ${COMFYUI_URL:-http://host.docker.internal:8188}
+      RUNNINGHUB_URL: ${RUNNINGHUB_URL:-https://www.runninghub.ai}
+      RUNNINGHUB_API_KEY: ${RUNNINGHUB_API_KEY:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?请填写 ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?请填写 ADMIN_PASSWORD}
+    volumes: [./data/media:/app/data/media]
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request; urllib.request.urlopen("http://localhost:8000/api/health")']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  worker:
+    build: ./backend
+    command: [python, -m, app.worker]
+    environment: *backend-env
+    volumes: [./data/media:/app/data/media]
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+  web:
+    build: ./frontend
+    ports: ['8080:80']
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+volumes:
+  mysql-data:
+  redis-data:

@@ -1,0 +1,26 @@
+{
+  "folders": [
+    { "name": "织图 · 完整项目", "path": "." }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/.pytest_cache": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.venv": true,
+      "**/dist": true,
+      "**/data": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "Vue.volar",
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "esbenp.prettier-vscode"
+    ]
+  }
+}
